@@ -10,7 +10,7 @@ def const_drift_const_vol_model(initial_price, drift_constant, volatility, times
     # Set the initial price
     price_path = [initial_price]
     # Set the time step
-    dt = 1
+    dt = 1 / timesteps
     # Simulate the price path
     for t in range(1, timesteps):
         # Generate the random shock
@@ -25,9 +25,9 @@ def const_drift_const_vol_model(initial_price, drift_constant, volatility, times
 
 if __name__ == "__main__":
     # Set the initial price, vol, and drift
-    initial_price = 3067
-    drift_constant = 0
-    vol = 0.01
+    initial_price = 3250
+    drift_constant = 0.01
+    vol = 2.19
     timesteps = 100
     # Simulate the price path
     for i in range(5):
