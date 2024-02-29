@@ -2,6 +2,57 @@ import numpy as np
 import scipy
 from scipy import optimize
 import matplotlib.pyplot as plt
+import pandas as pd
+
+
+def calculate_vol_of_vol(price_data, window=30):
+    """
+    Calculate the volatility of the volatility
+
+    Parameters
+    ----------
+    price_data : np.ndarray
+        The observed price data for the asset
+    window : int
+        The window for the rolling volatility
+
+    Returns
+    -------
+    xi : float
+        The volatility of the volatility
+    """
+    # Calculate rolling volatility using square root of time rule
+    volatility = np.array(pd.Series(price_data).rolling(
+        window).std()) * 1/np.sqrt(window)
+    # Make the volatility data the same length as the price data
+    volatility = volatility[~np.isnan(volatility)]
+    # Calculate the volatility of the volatility using square root of time rule
+    xi = np.std(volatility) * 1/np.sqrt(len(volatility))
+    return xi
+
+
+def calculate_correlation_between_asset_price_and_volatility(price_data, window=30):
+    """
+    Calculate the correlation between the asset price and its volatility
+
+    Parameters
+    ----------
+    price_data : np.ndarray
+        The observed price data for the asset
+
+    Returns
+    -------
+    rho : float
+        The correlation between the asset price and its volatility
+    """
+    # Calculate rolling volatility
+
+    volatility = np.array(pd.Series(price_data).rolling(window).std())
+    # Make the volatility data the same length as the price data
+    volatility = volatility[~np.isnan(volatility)]
+    # Calculate the correlation between the asset price and its volatility
+    rho = np.corrcoef(price_data[window-1:], volatility)[0, 1]
+    return rho
 
 
 def heston_model(S0, T, r, kappa, theta, xi, rho, N):
@@ -17,7 +68,7 @@ def heston_model(S0, T, r, kappa, theta, xi, rho, N):
     r : float
         The risk-free interest rate
     kappa : float
-        The mean-reversion rate
+        The mean-reversion rate 
     theta : float
         The long-run average volatility
     xi : float
@@ -67,18 +118,29 @@ def plot_price_path(price_path):
     plt.show()
 
 
+def plot_multiple_price_paths(price_paths):
+    """
+    Plot the price path
+    """
+    for price_path in price_paths:
+        plt.plot(price_path)
+    plt.xlabel('Time')
+    plt.ylabel('Asset Price')
+    plt.title('Simulated Asset Price Path')
+    plt.show()
+
+
 if __name__ == "__main__":
     # Create some observed data
     # Define the parameters
-    S0 = 3067
+    S0 = 3250
     T = 1
     r = 0.05
-    kappa = 2
-    theta = 0.05
-    xi = 0.4
-    rho = -0.5
-    N = 365
-
-    observed_data = heston_model(S0, T, r, kappa, theta, xi, rho, N)
-    # Plot the price path
-    plot_price_path(observed_data)
+    kappa = 0.2
+    theta = 2.5
+    xi = 0.2
+    rho = 0.9
+    N = 365 * 10
+    price_paths = [heston_model(S0, T, r, kappa, theta, xi, rho, N)
+                   for _ in range(10)]
+    plot_multiple_price_paths(price_paths)
