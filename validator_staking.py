@@ -158,6 +158,49 @@ def stochastic_yield(initial_yield, drift_constant, vol, timesteps):
     return yield_path
 
 
+def plot_stochastic_yield(initial_yield, drift_constant, vol, timesteps):
+    """
+    Plot the simulated yield as a percentage from staking using a stochastic process
+
+    Parameters
+    ----------
+    intial_yield : float
+        The initial yield
+    drift_constant : float
+        The drift constant of the yield
+    vol : float
+        The volatility of the yield
+    timesteps : int
+        The number of time steps to simulate the yield over
+    """
+    # Simulate the yield path
+    yield_path = const_drift_const_vol_model(
+        initial_yield, drift_constant, vol, timesteps)
+    # Plot the yield path
+    plt.plot(yield_path)
+    plt.xlabel('Time')
+    plt.ylabel('Yield')
+    plt.title('Simulated Yield Path')
+    plt.show()
+
+
+def plot_stochastic_yield(yield_path):
+    """
+    Plot the simulated yield from staking using a stochastic process
+
+    Parameters
+    ----------
+    yield_path : np.ndarray
+        The simulated yield path as a 1D array
+    """
+    # Plot the yield path
+    plt.plot(yield_path)
+    plt.xlabel('Time')
+    plt.ylabel('Yield')
+    plt.title('Simulated Yield Path')
+    plt.show()
+
+
 def calculate_staking_return(initial_stake, yield_path):
     """
     Calculate the total return from staking
@@ -174,18 +217,19 @@ def calculate_staking_return(initial_stake, yield_path):
     float
         The total return from staking
     """
+    total_eth = initial_stake
     timesteps = len(yield_path)
     # The yield path are the APR yields. We need to convert these to a daily yield
     yield_path = np.exp(np.array(yield_path) / 365) - 1
     # Staking rewards are paid out every 6.5 minutes when staking on Ethereum 2.0
     for t in range(timesteps):
-        initial_stake += initial_stake * yield_path[t]
+        total_eth += initial_stake * yield_path[t]
 
     # Calculate the number of block proposals that occured in the time period
     num_block_proposals = number_of_proposals_within_n_days(timesteps)
     sum_tips = np.sum(np.array(mev_tips(0.1, 0, 1, num_block_proposals)))
 
-    return initial_stake + sum_tips
+    return total_eth + sum_tips
 
 
 def time_varying_staking_return(initial_stake, yield_path):
@@ -208,13 +252,15 @@ def time_varying_staking_return(initial_stake, yield_path):
     staking_return = [initial_stake]
     # The yield path are the APR yields. We need to convert these to a daily yield
     yield_path = np.exp(np.array(yield_path) / 365) - 1
+
     for t in range(1, timesteps):
-        staking_return.append(staking_return[t-1]*(1+yield_path[t]))
+        staking_return.append(initial_stake*yield_path[t])
         proposal = number_of_proposals_within_n_days(1)
         if proposal:
             tips = mev_tips(0.1, 0, 1, proposal)
+            print(tips)
             staking_return[-1] += np.sum(tips)
-    return staking_return
+    return np.cumsum(staking_return)
 
 
 def plot_time_varying_staking_return(initial_stake, yield_path):
@@ -234,11 +280,12 @@ def plot_time_varying_staking_return(initial_stake, yield_path):
     yield_path = np.exp(np.array(yield_path) / 365) - 1
     for t in range(1, timesteps):
 
-        staking_return.append(staking_return[t-1]*(1+yield_path[t]))
-        print(yield_path[t])
+        staking_return.append(initial_stake*yield_path[t])
+
         proposal = number_of_proposals_within_n_days(1)
         if proposal:
             tips = mev_tips(0.05, 0, 1, proposal)
+
             staking_return[-1] += np.sum(tips)
 
     plt.plot(staking_return)
@@ -247,16 +294,90 @@ def plot_time_varying_staking_return(initial_stake, yield_path):
     plt.show()
 
 
+def calculate_max_percentage_return(return_in_usd_matrix):
+    """
+    Calculate the percentage return from staking across multiple simulations
+
+    Parameters
+    ----------
+    return_in_usd_matrix : np.ndarray
+        The return matrix from staking in USD as a 2D array
+
+    Returns
+    -------
+    float
+        The percentage return from staking
+    """
+    initial = return_in_usd_matrix[:, 0]
+    end = return_in_usd_matrix[:, -1]
+    return np.max((end - initial) / initial)
+
+
+def calculate_min_percentage_return(return_in_usd_matrix):
+    """
+    Calculate the percentage return from staking across multiple simulations
+
+    Parameters
+    ----------
+    return_in_usd_matrix : np.ndarray
+        The return matrix from staking in USD as a 2D array
+
+    Returns
+    -------
+    float
+        The percentage return from staking
+    """
+    initial = return_in_usd_matrix[:, 0]
+    end = return_in_usd_matrix[:, -1]
+    return np.min((end - initial) / initial)
+
+
+def calculate_mean_percentage_return(return_in_usd_matrix):
+    """
+    Calculate the percentage return from staking across multiple simulations
+
+    Parameters
+    ----------
+    return_in_usd_matrix : np.ndarray
+        The return matrix from staking in USD as a 2D array
+
+    Returns
+    -------
+    float
+        The percentage return from staking
+    """
+    initial = return_in_usd_matrix[:, 0]
+    end = return_in_usd_matrix[:, -1]
+    return np.mean((end - initial) / initial)
+
+
+def calculate_std_dev_percentage_return(return_in_usd_matrix):
+    """
+    Calculate the percentage return from staking across multiple simulations
+
+    Parameters
+    ----------
+    return_in_usd_matrix : np.ndarray
+        The return matrix from staking in USD as a 2D array
+
+    Returns
+    -------
+    float
+        The percentage return from staking
+    """
+    initial = return_in_usd_matrix[:, 0]
+    end = return_in_usd_matrix[:, -1]
+    return np.std((end - initial) / initial)
+
+
 if __name__ == "__main__":
 
     # Set the initial yield, vol, and drift
     initial_yield = 0.035
-    yield_drift_constant = -0.10
-    yield_vol = 0.1
-    timesteps = 365*30
-    # Staking Yield path
-    yield_path = stochastic_yield(
-        initial_yield, yield_drift_constant, yield_vol, timesteps)
+    yield_drift_constant = -0.01
+    yield_vol = 1.0
+    timesteps = 365*5
+
     # plot_mev_tips(0.1, 0, 1, 1000)
     num_block_proposals = number_of_proposals_within_n_days(365)
 
@@ -278,6 +399,7 @@ if __name__ == "__main__":
     historical_open_price = np.array(historical_data['open'])
 
     model = "const"
+
     if model == "heston":
         # Use historical data to get rho, xi
         rho = calculate_correlation_between_asset_price_and_volatility(
@@ -285,14 +407,21 @@ if __name__ == "__main__":
         xi = calculate_vol_of_vol(historical_open_price)
         print("Rho:", rho)
         print("Xi:", xi)
+
     for i in range(num_simulations):
+        # Staking Yield path
+        yield_path = stochastic_yield(
+            initial_yield, yield_drift_constant, yield_vol, timesteps)
+        # plot_stochastic_yield(yield_path)
+        # Staking return in ETH including block proposal tips + staking rewards
         return_in_eth = time_varying_staking_return(32, yield_path)
+
         if model == "heston":
             eth_price_in_usd = heston_model(S0, T, r, kappa, theta, xi, rho, N)
         elif model == "const_vol":
             eth_drift_const = 0.05
             vol = 2.19
-            print(vol)
+
             eth_price_in_usd = np.array(const_drift_const_vol_model(
                 S0, eth_drift_const, vol, N))
         else:
@@ -300,14 +429,22 @@ if __name__ == "__main__":
 
         # Multiply the return in ETH by the price of ETH in USD
         return_in_usd = return_in_eth * eth_price_in_usd
+
         return_in_usd_matrix[i, :] = return_in_usd
         plt.plot(return_in_usd, alpha=0.5)
 
     # Plot the average at each time step
     plt.plot(np.mean(return_in_usd_matrix, axis=0),
              color='black', linewidth=2)
-    # Set y range of plot to be between 0 and 500,000
-    plt.ylim(0, 150)
+
+    print("mean percentage return:",
+          calculate_mean_percentage_return(return_in_usd_matrix))
+    print("max percentage return:",
+          calculate_max_percentage_return(return_in_usd_matrix))
+    print("min percentage return:",
+          calculate_min_percentage_return(return_in_usd_matrix))
+    print("std dev percentage return:",
+          calculate_std_dev_percentage_return(return_in_usd_matrix))
 
     plt.xlabel('Time (days)')
     plt.ylabel('Total ETH')
